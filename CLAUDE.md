@@ -1,0 +1,287 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+This is a Docker-based production deployment for n8n workflow automation platform. The stack consists of:
+- n8n (latest from docker.n8n.io/n8nio/n8n)
+- PostgreSQL 15 as the database backend
+- Docker Compose orchestration with health checks and auto-restart
+
+## Project Structure
+
+```
+n8n/
+├── docker-compose.yml          # Docker 服务编排配置
+├── .env                        # 环境变量（密码、认证配置）
+├── .mcp.json                   # MCP 服务器配置（n8n API 访问）
+├── backup.sh                   # 备份脚本（PostgreSQL + n8n 数据 + 本地文件）
+├── restore.sh                  # 恢复脚本（按时间戳恢复）
+├── setup-cron.sh               # 定时备份设置（每天凌晨 2 点）
+├── README.md                   # 详细部署文档
+├── CLAUDE.md                   # 本文件
+│
+├── backups/                    # 备份文件存储
+│   ├── n8n_db_<timestamp>.sql          # PostgreSQL 数据库备份
+│   ├── n8n_data_<timestamp>.tar.gz     # n8n 数据卷备份
+│   └── local_files_<timestamp>.tar.gz  # 本地文件备份
+│
+├── local-files/                # n8n 可访问的本地文件目录（挂载到 /files）
+├── data/                       # 数据目录（预留）
+├── docs/                       # 文档目录（预留）
+├── logs/                       # 日志目录（预留）
+│
+└── .claude/                    # Claude Code 配置
+    ├── settings.local.json     # 本地权限配置
+    └── skills/                 # n8n 开发技能库
+        ├── n8n-workflow-patterns/      # 工作流架构模式
+        ├── n8n-code-javascript/        # JavaScript Code 节点
+        ├── n8n-code-python/            # Python Code 节点
+        ├── n8n-expression-syntax/      # 表达式语法
+        ├── n8n-node-configuration/     # 节点配置
+        ├── n8n-mcp-tools-expert/       # MCP 工具使用
+        └── n8n-validation-expert/      # 工作流验证
+```
+
+## Essential Commands
+
+### Service Management
+```bash
+docker compose up -d          # Start all services
+docker compose down           # Stop and remove containers (preserves volumes)
+docker compose restart        # Restart services
+docker compose ps             # View service status
+docker compose logs -f n8n    # Follow n8n logs
+docker compose logs -f postgres  # Follow PostgreSQL logs
+```
+
+### Backup and Restore
+```bash
+./backup.sh                   # Full backup: PostgreSQL + n8n data + local files
+./restore.sh <YYYYMMDD_HHMMSS>  # Restore from backup timestamp
+./setup-cron.sh               # Enable daily 2am auto-backup via crontab
+```
+
+### Container Access
+```bash
+docker compose exec n8n sh                    # Enter n8n container
+docker compose exec postgres psql -U n8n -d n8n  # PostgreSQL CLI
+```
+
+### Health Checks
+```bash
+docker compose exec postgres pg_isready -U n8n  # Check PostgreSQL
+curl -f http://localhost:5678/healthz            # Check n8n health
+```
+
+## Architecture
+
+### Docker Volumes
+| Volume | Container Path | Purpose |
+|--------|---------------|---------|
+| `n8n_data` | `/home/node/.n8n` | n8n workflows, credentials, config |
+| `postgres_data` | `/var/lib/postgresql/data` | PostgreSQL data |
+| `./local-files` | `/files` | Local file storage accessible by n8n |
+
+### Service Dependencies
+- n8n depends on PostgreSQL (uses `condition: service_healthy`)
+- PostgreSQL health check: `pg_isready -U n8n` every 10s
+
+### Network Configuration
+- n8n Web UI: `http://localhost:5678`
+- Default timezone: `Asia/Shanghai`
+- Database: `n8n` user, `n8n` database on port 5432
+
+## Configuration
+
+### Environment Variables (.env)
+Key variables that must be set:
+- `POSTGRES_PASSWORD` - Database password (referenced by both services)
+- `N8N_BASIC_AUTH_PASSWORD` - n8n admin login password
+
+Optional webhook/domain configuration (commented out by default):
+- `WEBHOOK_URL`, `N8N_HOST`, `N8N_PORT`, `N8N_PROTOCOL`
+
+### Important Safety Notes
+- **Never use `docker compose down -v`** - this deletes all data volumes
+- Always backup before PostgreSQL version upgrades
+- Backup retention: 30 days automatic cleanup in `backup.sh`
+
+## Claude Code Skills for n8n Development
+
+The `.claude/skills/` directory contains 7 specialized skills for n8n workflow development. **Always consult relevant skills before building workflows.**
+
+### 1. n8n-workflow-patterns (核心：工作流架构)
+6 种核心工作流模式，覆盖 90%+ 使用场景：
+
+| 模式 | 场景 | 示例 |
+|------|------|------|
+| **Webhook Processing** | 接收 HTTP 请求 | 表单提交 → 处理 → 通知 |
+| **HTTP API Integration** | 调用外部 API | 获取数据 → 转换 → 存储 |
+| **Database Operations** | 数据库读写同步 | 定时查询 → 转换 → 写入 |
+| **AI Agent Workflow** | AI 代理工作流 | 聊天 → AI Agent (模型+工具+内存) → 输出 |
+| **Scheduled Tasks** | 定时任务 | 每日报表、数据同步 |
+| **Batch Processing** | 大数据集分批处理 | SplitInBatches 循环处理 |
+
+**关键文件**：
+- `SKILL.md` - 模式选择指南、工作流创建清单、数据流模式
+- `webhook_processing.md` - Webhook 数据结构、响应处理
+- `http_api_integration.md` - REST API、认证、分页、重试
+- `database_operations.md` - 查询、同步、事务、批量处理
+- `ai_agent_workflow.md` - AI 代理、工具、内存、Langchain 节点
+- `scheduled_tasks.md` - Cron 调度、报表、维护任务
+
+### 2. n8n-code-javascript (核心：JavaScript 代码)
+Code 节点的 JavaScript 开发指南：
+
+**关键概念**：
+- 两种模式：`Run Once for All Items`（推荐）vs `Run Once for Each Item`
+- 数据访问：`$input.all()`, `$input.first()`, `$input.item`
+- 返回格式：`[{json: {...}}]`（必须）
+- Webhook 数据：`$json.body.field`（不是 `$json.field`）
+
+**关键文件**：
+- `SKILL.md` - 模式选择、数据访问、返回格式、错误预防
+- `COMMON_PATTERNS.md` - 10 种生产环境模式
+- `DATA_ACCESS.md` - 完整数据访问指南
+- `ERROR_PATTERNS.md` - 常见错误和解决方案
+- `BUILTIN_FUNCTIONS.md` - 内置函数参考
+
+**关键模式**：
+```javascript
+// SplitInBatches 跨迭代数据累积
+// BEFORE loop:
+const staticData = $getWorkflowStaticData('global');
+staticData.results = [];
+
+// INSIDE loop:
+staticData.results.push(processedData);
+
+// AFTER loop:
+const allResults = staticData.results;
+```
+
+### 3. n8n-expression-syntax (核心：表达式语法)
+n8n 表达式语法指南：
+
+**关键规则**：
+- 动态内容必须用 `{{}}` 包裹
+- Webhook 数据在 `.body` 下：`{{$json.body.field}}`
+- Code 节点不用 `{{}}`，直接用 JavaScript
+- 节点名有空格必须用引号：`{{$node["HTTP Request"].json.data}}`
+
+**关键文件**：
+- `SKILL.md` - 格式、核心变量、常见模式、验证规则
+- `COMMON_MISTAKES.md` - 完整错误目录
+- `EXAMPLES.md` - 真实工作流示例
+
+### 4. n8n-node-configuration (节点配置)
+Operation-aware 节点配置指南：
+
+**关键概念**：
+- 渐进式发现：先用 `get_node({detail: "standard"})`（95% 场景够用）
+- 属性依赖：字段可见性由 `displayOptions` 控制
+- Operation-specific：不同操作需要不同字段
+
+**关键文件**：
+- `SKILL.md` - 配置流程、属性依赖、常见节点模式
+- `DEPENDENCIES.md` - 深入属性依赖和 displayOptions
+- `OPERATION_PATTERNS.md` - 按节点类型的配置模式
+
+### 5. n8n-mcp-tools-expert (MCP 工具使用)
+n8n-mcp MCP 服务器工具使用指南：
+
+**关键工具**：
+| 工具 | 用途 | 速度 |
+|------|------|------|
+| `search_nodes` | 搜索节点 | <20ms |
+| `get_node` | 获取节点详情 | <10ms |
+| `validate_node` | 验证节点配置 | <100ms |
+| `n8n_create_workflow` | 创建工作流 | 100-500ms |
+| `n8n_update_partial_workflow` | 编辑工作流（最常用） | 50-200ms |
+| `n8n_deploy_template` | 部署模板 | 200-500ms |
+
+**关键格式差异**：
+- 搜索/验证工具：`nodes-base.slack`（短前缀）
+- 工作流工具：`n8n-nodes-base.slack`（完整前缀）
+
+**关键文件**：
+- `SKILL.md` - 工具分类、选择指南、常见错误
+- `SEARCH_GUIDE.md` - 节点发现工具详解
+- `VALIDATION_GUIDE.md` - 验证工具详解
+- `WORKFLOW_GUIDE.md` - 工作流管理工具详解
+
+### 6. n8n-validation-expert (工作流验证)
+验证错误解释和修复指南：
+
+**关键概念**：
+- 验证是迭代过程：平均 2-3 轮（23s 思考 + 58s 修复）
+- 4 种验证配置：`minimal`, `runtime`（推荐）, `ai-friendly`, `strict`
+- 自动修复：操作符结构问题自动修复
+- 误报识别：学会识别可接受的警告
+
+**关键文件**：
+- `SKILL.md` - 错误严重级别、验证循环、验证配置
+- `ERROR_CATALOG.md` - 完整错误类型目录
+- `FALSE_POSITIVES.md` - 何时警告是可接受的
+
+### 7. n8n-code-python (Python 代码)
+Python Code 节点开发指南（结构类似 JavaScript）
+
+## Workflow Development Workflow
+
+使用 Claude Code 开发 n8n 工作流的标准流程：
+
+### 1. 规划阶段
+- 确定工作流模式（Webhook、API、Database、AI、Scheduled、Batch）
+- 使用 `n8n-workflow-patterns` skill 选择合适模式
+- 列出所需节点
+
+### 2. 发现阶段
+```javascript
+// 搜索节点
+search_nodes({query: "slack"})
+
+// 获取节点详情（默认 standard 够用）
+get_node({nodeType: "nodes-base.slack"})
+
+// 验证节点配置
+validate_node({nodeType: "nodes-base.slack", config: {...}, profile: "runtime"})
+```
+
+### 3. 构建阶段
+```javascript
+// 创建工作流
+n8n_create_workflow({name: "My Workflow", nodes: [...], connections: {...}})
+
+// 迭代编辑（平均 56s 间隔）
+n8n_update_partial_workflow({
+  id: "workflow-id",
+  intent: "Add webhook trigger",
+  operations: [{type: "addNode", node: {...}}]
+})
+
+// 验证工作流
+n8n_validate_workflow({id: "workflow-id"})
+```
+
+### 4. 部署阶段
+```javascript
+// 激活工作流
+n8n_update_partial_workflow({
+  id: "workflow-id",
+  operations: [{type: "activateWorkflow"}]
+})
+```
+
+## MCP Server
+
+An n8n MCP server is configured in `.mcp.json` at `http://localhost:5678/mcp-server/http`. This enables direct n8n API access for workflow management via Claude Code.
+
+## Backup Files
+
+Backups are stored in `./backups/` with naming pattern:
+- `n8n_db_<timestamp>.sql` - PostgreSQL dump
+- `n8n_data_<timestamp>.tar.gz` - n8n volume snapshot
+- `local_files_<timestamp>.tar.gz` - Local files archive
