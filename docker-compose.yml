@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15
@@ -35,6 +33,11 @@ services:
       - N8N_ENABLE_EXECUTE_COMMAND=true
       - N8N_BLOCK_ENV_VARS_IN_EXECUTE_COMMAND=false
       - N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=true
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_BLOCK_FS_WRITE_ACCESS=false
+      - NODE_FUNCTION_ALLOW_BUILTIN=*
+      - NODE_FUNCTION_ALLOW_EXTERNAL=*
+      - N8N_UNVERIFIED_PACKAGES_ENABLED=true
 
       # 数据库配置
       - DB_TYPE=postgresdb

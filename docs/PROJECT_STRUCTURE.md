@@ -15,6 +15,10 @@ n8n/
 ├── README.md                   # 部署文档
 ├── CLAUDE.md                   # Claude Code 指南
 │
+├── app/                        # n8n 应用项目
+│   ├── claudechangelogRSS/     # Claude 更新日志 RSS 项目
+│   └── csdnWrite/              # CSDN 写作项目
+│
 ├── backups/                    # 备份文件存储
 │   ├── n8n_db_<timestamp>.sql
 │   ├── n8n_data_<timestamp>.tar.gz
@@ -23,7 +27,8 @@ n8n/
 ├── local-files/                # n8n 本地文件目录
 ├── data/                       # 数据目录（预留）
 ├── docs/                       # 文档目录
-│   └── PROJECT_STRUCTURE.md    # 本文件
+│   ├── PROJECT_STRUCTURE.md    # 本文件
+│   └── SKILLS_QUICK_REFERENCE.md # Skills 快速参考
 ├── logs/                       # 日志目录（预留）
 │
 └── .claude/                    # Claude Code 配置
@@ -37,6 +42,22 @@ n8n/
         ├── n8n-mcp-tools-expert/
         └── n8n-validation-expert/
 ```
+
+## 应用项目目录 (app/)
+
+`app/` 目录用于存放 n8n 工作流相关的应用项目：
+
+### claudechangelogRSS/
+Claude 更新日志 RSS 项目 - 用于订阅和处理 Claude 的更新日志。
+
+### csdnWrite/
+CSDN 写作项目 - 用于自动化 CSDN 博客文章的发布和管理。
+
+这些项目可以包含：
+- 工作流导出文件（JSON）
+- 配置文件
+- 文档说明
+- 辅助脚本
 
 ## 核心配置文件
 
@@ -58,6 +79,33 @@ Docker Compose 编排文件，定义两个服务：
   - `./local-files:/files`（本地文件）
 - 依赖：postgres（条件：service_healthy）
 - 时区：`Asia/Shanghai`
+
+**环境变量配置**：
+
+核心配置：
+- `N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true` - 强制文件权限
+- `GENERIC_TIMEZONE` / `TZ=Asia/Shanghai` - 时区
+- `NODE_ENV=production` - 生产环境
+
+功能解锁配置：
+- `N8N_RUNNERS_ENABLED=true` - 启用任务运行器
+- `N8N_BLOCK_FS_WRITE_ACCESS=false` - 允许文件系统写入
+- `NODE_FUNCTION_ALLOW_BUILTIN=*` - 允许所有内置模块
+- `NODE_FUNCTION_ALLOW_EXTERNAL=*` - 允许所有外部模块
+- `N8N_UNVERIFIED_PACKAGES_ENABLED=true` - 启用未验证的社区包
+- `N8N_ENABLE_EXECUTE_COMMAND=true` - 允许执行命令节点
+- `N8N_BLOCK_ENV_VARS_IN_EXECUTE_COMMAND=false` - 允许在命令中使用环境变量
+- `N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=true` - 允许社区包作为工具
+- `NODE_EXCLUDE=[]` - 不排除任何节点
+
+数据库配置：
+- `DB_TYPE=postgresdb` - 使用 PostgreSQL
+- `DB_POSTGRESDB_*` - 数据库连接参数
+
+安全配置：
+- `N8N_BASIC_AUTH_ACTIVE=true` - 启用基本认证
+- `N8N_BASIC_AUTH_USER=admin` - 管理员用户名
+- `N8N_BASIC_AUTH_PASSWORD` - 从 `.env` 读取密码
 
 ### .env
 环境变量配置文件，包含：

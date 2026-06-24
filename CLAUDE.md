@@ -22,6 +22,10 @@ n8n/
 ├── README.md                   # 详细部署文档
 ├── CLAUDE.md                   # 本文件
 │
+├── app/                        # n8n 应用项目
+│   ├── claudechangelogRSS/     # Claude 更新日志 RSS 项目
+│   └── csdnWrite/              # CSDN 写作项目
+│
 ├── backups/                    # 备份文件存储
 │   ├── n8n_db_<timestamp>.sql          # PostgreSQL 数据库备份
 │   ├── n8n_data_<timestamp>.tar.gz     # n8n 数据卷备份
@@ -29,7 +33,9 @@ n8n/
 │
 ├── local-files/                # n8n 可访问的本地文件目录（挂载到 /files）
 ├── data/                       # 数据目录（预留）
-├── docs/                       # 文档目录（预留）
+├── docs/                       # 文档目录
+│   ├── PROJECT_STRUCTURE.md    # 项目结构详解
+│   └── SKILLS_QUICK_REFERENCE.md # Skills 快速参考
 ├── logs/                       # 日志目录（预留）
 │
 └── .claude/                    # Claude Code 配置
@@ -102,6 +108,41 @@ Key variables that must be set:
 
 Optional webhook/domain configuration (commented out by default):
 - `WEBHOOK_URL`, `N8N_HOST`, `N8N_PORT`, `N8N_PROTOCOL`
+
+### Docker Compose Environment Variables
+
+#### Core Settings
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| `N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS` | `true` | Enforce file permissions |
+| `GENERIC_TIMEZONE` / `TZ` | `Asia/Shanghai` | Timezone configuration |
+| `NODE_ENV` | `production` | Node.js environment |
+
+#### Feature Unlock Settings
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| `N8N_RUNNERS_ENABLED` | `true` | Enable task runners |
+| `N8N_BLOCK_FS_WRITE_ACCESS` | `false` | Allow filesystem write access |
+| `NODE_FUNCTION_ALLOW_BUILTIN` | `*` | Allow all built-in Node.js modules |
+| `NODE_FUNCTION_ALLOW_EXTERNAL` | `*` | Allow all external npm packages |
+| `N8N_UNVERIFIED_PACKAGES_ENABLED` | `true` | Enable unverified community packages |
+| `N8N_ENABLE_EXECUTE_COMMAND` | `true` | Enable Execute Command node |
+| `N8N_BLOCK_ENV_VARS_IN_EXECUTE_COMMAND` | `false` | Allow env vars in Execute Command |
+| `N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE` | `true` | Allow community packages as AI tools |
+| `NODE_EXCLUDE` | `[]` | No excluded nodes |
+
+#### Database Settings
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| `DB_TYPE` | `postgresdb` | Database type |
+| `DB_POSTGRESDB_*` | - | PostgreSQL connection details |
+
+#### Security Settings
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| `N8N_BASIC_AUTH_ACTIVE` | `true` | Enable basic auth |
+| `N8N_BASIC_AUTH_USER` | `admin` | Admin username |
+| `N8N_BASIC_AUTH_PASSWORD` | from `.env` | Admin password |
 
 ### Important Safety Notes
 - **Never use `docker compose down -v`** - this deletes all data volumes
