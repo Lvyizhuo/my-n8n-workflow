@@ -2,6 +2,62 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## ⚠️ Mandatory Tools Usage (必须遵守)
+
+**When working with n8n, you MUST use the available Skills and MCP tools. Do NOT guess or write code manually when a tool or skill exists for that task.**
+
+### Skills Usage Rules
+
+| Task | Required Skill | When to Use |
+|------|---------------|-------------|
+| Creating/modifying workflows | `n8n-workflow-patterns` | Before any workflow design |
+| Writing Code node (JS) | `n8n-code-javascript` | Before writing any JavaScript code |
+| Writing Code node (Python) | `n8n-code-python` | Before writing any Python code |
+| Using expressions `{{}}` | `n8n-expression-syntax` | Before writing any expression |
+| Configuring nodes | `n8n-node-configuration` | Before configuring any node |
+| Using MCP tools | `n8n-mcp-tools-expert` | Before using any MCP tool |
+| Fixing validation errors | `n8n-validation-expert` | When validation fails |
+
+**How to use skills:**
+```
+# Read the skill's SKILL.md first
+cat .claude/skills/<skill-name>/SKILL.md
+
+# Then read specific topic files as needed
+cat .claude/skills/<skill-name>/<topic>.md
+```
+
+### MCP Tools Usage Rules
+
+**Always prefer MCP tools over manual configuration.** The MCP server provides direct API access to n8n.
+
+| Task | MCP Tool | Speed |
+|------|----------|-------|
+| Search for nodes | `search_nodes` | <20ms |
+| Get node details | `get_node` | <10ms |
+| Validate node config | `validate_node` | <100ms |
+| Create workflow | `n8n_create_workflow` | 100-500ms |
+| Edit workflow | `n8n_update_partial_workflow` | 50-200ms |
+| Deploy template | `n8n_deploy_template` | 200-500ms |
+| Validate workflow | `n8n_validate_workflow` | 100-500ms |
+
+**Critical format difference:**
+- Search/validate tools: `nodes-base.slack` (short prefix)
+- Workflow tools: `n8n-nodes-base.slack` (full prefix)
+
+### Workflow Development Checklist
+
+When building n8n workflows, follow this order:
+
+1. **Read skill** → `n8n-workflow-patterns/SKILL.md` to choose pattern
+2. **Search nodes** → `search_nodes({query: "..."})`
+3. **Get node details** → `get_node({nodeType: "nodes-base.xxx"})`
+4. **Read skill** → `n8n-node-configuration/SKILL.md` for config guidance
+5. **Validate config** → `validate_node({nodeType: "...", config: {...}})`
+6. **Create workflow** → `n8n_create_workflow({...})`
+7. **Read skill** → `n8n-validation-expert/SKILL.md` if errors occur
+8. **Activate** → `n8n_update_partial_workflow({operations: [{type: "activateWorkflow"}]})`
+
 ## Project Overview
 
 This is a Docker-based production deployment for n8n workflow automation platform. The stack consists of:
@@ -151,9 +207,30 @@ Optional webhook/domain configuration (commented out by default):
 
 ## Claude Code Skills for n8n Development
 
-The `.claude/skills/` directory contains 7 specialized skills for n8n workflow development. **Always consult relevant skills before building workflows.**
+The `.claude/skills/` directory contains 7 specialized skills for n8n workflow development.
+
+> **⚠️ IMPORTANT**: You MUST read the relevant skill's `SKILL.md` file before performing any n8n-related task. Skills contain critical patterns, anti-patterns, and best practices that prevent common errors.
+
+### How to Use Skills
+
+1. **Identify the task type** (workflow design, code writing, node configuration, etc.)
+2. **Read the skill's `SKILL.md`** for overview and guidelines
+3. **Read specific topic files** for detailed patterns
+4. **Apply the patterns** in your implementation
+
+```bash
+# Example: Before writing JavaScript Code node
+cat .claude/skills/n8n-code-javascript/SKILL.md
+cat .claude/skills/n8n-code-javascript/COMMON_PATTERNS.md
+
+# Example: Before configuring a node
+cat .claude/skills/n8n-node-configuration/SKILL.md
+cat .claude/skills/n8n-node-configuration/OPERATION_PATTERNS.md
+```
 
 ### 1. n8n-workflow-patterns (核心：工作流架构)
+**何时使用**: 创建新工作流、设计工作流架构、选择工作流模式时必须阅读
+
 6 种核心工作流模式，覆盖 90%+ 使用场景：
 
 | 模式 | 场景 | 示例 |
@@ -174,6 +251,8 @@ The `.claude/skills/` directory contains 7 specialized skills for n8n workflow d
 - `scheduled_tasks.md` - Cron 调度、报表、维护任务
 
 ### 2. n8n-code-javascript (核心：JavaScript 代码)
+**何时使用**: 编写 JavaScript Code 节点时必须阅读，特别是数据访问和返回格式
+
 Code 节点的 JavaScript 开发指南：
 
 **关键概念**：
@@ -204,6 +283,8 @@ const allResults = staticData.results;
 ```
 
 ### 3. n8n-expression-syntax (核心：表达式语法)
+**何时使用**: 使用 `{{}}` 表达式、引用其他节点数据、处理 Webhook 数据时必须阅读
+
 n8n 表达式语法指南：
 
 **关键规则**：
@@ -218,6 +299,8 @@ n8n 表达式语法指南：
 - `EXAMPLES.md` - 真实工作流示例
 
 ### 4. n8n-node-configuration (节点配置)
+**何时使用**: 配置任何节点属性、理解字段依赖关系、处理 displayOptions 时必须阅读
+
 Operation-aware 节点配置指南：
 
 **关键概念**：
@@ -231,6 +314,8 @@ Operation-aware 节点配置指南：
 - `OPERATION_PATTERNS.md` - 按节点类型的配置模式
 
 ### 5. n8n-mcp-tools-expert (MCP 工具使用)
+**何时使用**: 使用任何 MCP 工具前必须阅读，特别是工具选择和格式差异
+
 n8n-mcp MCP 服务器工具使用指南：
 
 **关键工具**：
@@ -254,6 +339,8 @@ n8n-mcp MCP 服务器工具使用指南：
 - `WORKFLOW_GUIDE.md` - 工作流管理工具详解
 
 ### 6. n8n-validation-expert (工作流验证)
+**何时使用**: 遇到验证错误、需要理解错误含义、需要自动修复时必须阅读
+
 验证错误解释和修复指南：
 
 **关键概念**：
@@ -268,6 +355,8 @@ n8n-mcp MCP 服务器工具使用指南：
 - `FALSE_POSITIVES.md` - 何时警告是可接受的
 
 ### 7. n8n-code-python (Python 代码)
+**何时使用**: 编写 Python Code 节点时必须阅读
+
 Python Code 节点开发指南（结构类似 JavaScript）
 
 ## Workflow Development Workflow
@@ -316,9 +405,96 @@ n8n_update_partial_workflow({
 })
 ```
 
-## MCP Server
+## MCP Server Configuration
 
 An n8n MCP server is configured in `.mcp.json` at `http://localhost:5678/mcp-server/http`. This enables direct n8n API access for workflow management via Claude Code.
+
+### Available MCP Tools
+
+#### Node Discovery Tools
+| Tool | Purpose | Example |
+|------|---------|---------|
+| `search_nodes` | Search for nodes by keyword | `search_nodes({query: "slack"})` |
+| `get_node` | Get node details and properties | `get_node({nodeType: "nodes-base.slack"})` |
+| `list_nodes` | List all available nodes | `list_nodes({})` |
+
+#### Node Configuration Tools
+| Tool | Purpose | Example |
+|------|---------|---------|
+| `validate_node` | Validate node configuration | `validate_node({nodeType: "nodes-base.slack", config: {...}})` |
+| `search_node_properties` | Search for specific properties | `search_node_properties({nodeType: "...", query: "channel"})` |
+
+#### Workflow Management Tools
+| Tool | Purpose | Example |
+|------|---------|---------|
+| `n8n_create_workflow` | Create new workflow | `n8n_create_workflow({name: "...", nodes: [...], connections: {...}})` |
+| `n8n_update_partial_workflow` | Edit existing workflow | `n8n_update_partial_workflow({id: "...", operations: [...]})` |
+| `n8n_get_workflow` | Get workflow details | `n8n_get_workflow({id: "..."})` |
+| `n8n_list_workflows` | List all workflows | `n8n_list_workflows({})` |
+| `n8n_delete_workflow` | Delete workflow | `n8n_delete_workflow({id: "..."})` |
+| `n8n_validate_workflow` | Validate workflow | `n8n_validate_workflow({id: "..."})` |
+| `n8n_deploy_template` | Deploy from template | `n8n_deploy_template({templateId: "..."})` |
+
+#### Data & Credentials Tools
+| Tool | Purpose | Example |
+|------|---------|---------|
+| `n8n_manage_datatable` | Manage data tables | `n8n_manage_datatable({operation: "create", ...})` |
+| `n8n_manage_credentials` | Manage credentials | `n8n_manage_credentials({operation: "create", ...})` |
+| `n8n_audit_instance` | Security audit | `n8n_audit_instance({})` |
+
+### MCP Tool Usage Patterns
+
+**Pattern 1: Search → Get → Configure → Validate**
+```javascript
+// 1. Search for node
+const nodes = await search_nodes({query: "http"})
+
+// 2. Get node details
+const nodeInfo = await get_node({nodeType: "nodes-base.httpRequest"})
+
+// 3. Configure node (use short prefix for validation)
+const validation = await validate_node({
+  nodeType: "nodes-base.httpRequest",
+  config: {method: "GET", url: "https://api.example.com"}
+})
+
+// 4. Use in workflow (full prefix)
+await n8n_create_workflow({
+  name: "My Workflow",
+  nodes: [{type: "n8n-nodes-base.httpRequest", ...}]
+})
+```
+
+**Pattern 2: Iterative Workflow Building**
+```javascript
+// Create initial workflow
+const workflow = await n8n_create_workflow({name: "...", nodes: [...]})
+
+// Add nodes incrementally
+await n8n_update_partial_workflow({
+  id: workflow.id,
+  intent: "Add HTTP trigger",
+  operations: [{type: "addNode", node: {...}}]
+})
+
+// Validate after each change
+await n8n_validate_workflow({id: workflow.id})
+
+// Activate when ready
+await n8n_update_partial_workflow({
+  id: workflow.id,
+  operations: [{type: "activateWorkflow"}]
+})
+```
+
+### Common MCP Errors and Solutions
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| `Invalid node type` | Wrong prefix | Use `nodes-base.xxx` for search/validate, `n8n-nodes-base.xxx` for workflow operations |
+| `Missing required field` | Incomplete config | Check `get_node` response for required properties |
+| `Workflow not found` | Wrong ID | Use `n8n_list_workflows` to find correct ID |
+| `Validation failed` | Config error | Read `n8n-validation-expert` skill for error interpretation
 
 ## Backup Files
 
@@ -326,3 +502,26 @@ Backups are stored in `./backups/` with naming pattern:
 - `n8n_db_<timestamp>.sql` - PostgreSQL dump
 - `n8n_data_<timestamp>.tar.gz` - n8n volume snapshot
 - `local_files_<timestamp>.tar.gz` - Local files archive
+
+## Quick Reference: Task → Tool Mapping
+
+| I want to... | Tool/Skill to use |
+|--------------|-------------------|
+| Create a new workflow | `n8n_create_workflow` + `n8n-workflow-patterns` skill |
+| Add a node to workflow | `n8n_update_partial_workflow` + `n8n-node-configuration` skill |
+| Find what node to use | `search_nodes` + `get_node` |
+| Write JavaScript code | `n8n-code-javascript` skill |
+| Write Python code | `n8n-code-python` skill |
+| Use expressions `{{}}` | `n8n-expression-syntax` skill |
+| Fix validation errors | `n8n-validation-expert` skill + `n8n_validate_workflow` |
+| Deploy a template | `n8n_deploy_template` |
+| Manage credentials | `n8n_manage_credentials` |
+| Run security audit | `n8n_audit_instance` |
+
+## Common Pitfalls to Avoid
+
+1. **Don't guess node properties** → Use `get_node` to get accurate schema
+2. **Don't use wrong prefix** → `nodes-base.xxx` for search/validate, `n8n-nodes-base.xxx` for workflows
+3. **Don't skip validation** → Always `validate_node` before adding to workflow
+4. **Don't ignore skills** → Skills contain critical patterns that prevent errors
+5. **Don't write expressions blindly** → Read `n8n-expression-syntax` skill for correct format
